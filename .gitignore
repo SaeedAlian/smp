@@ -1,1 +1,8 @@
 build/
+CMakeFiles/
+Testing/
+CMakeCache.txt
+CTestTestfile.cmake
+cmake_install.cmake
+database.db
+test_db.db
