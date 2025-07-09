@@ -1,11 +1,12 @@
-build:
-	@g++ -o build/main.out -lncurses src/main.cpp
+CXX = g++
+CXXFLAGS = -Wall -Wextra -std=c++17 -Iinclude
+LDFLAGS = -lncurses -lfmt -lsqlite3
 
-debug:
-	@g++ -g -o build/main.out -lncurses src/main.cpp && gdb ./main.out
+SRC = src/main.cpp src/library.cpp
+OUT = build/musicplayer
 
-run:
-	@./build/main.out
+all:
+	$(CXX) $(CXXFLAGS) -o $(OUT) $(SRC) $(LDFLAGS)
 
-valgrind: build
-	@valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./main.out 
+clean:
+	rm -f $(OUT)

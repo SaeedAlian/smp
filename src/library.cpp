@@ -1,0 +1,267 @@
+#include "./library.hpp"
+#include "./common/defines.hpp"
+#include <iostream>
+#include <sqlite3.h>
+
+Library::Library(const std::string &db_name) : db(nullptr) {
+  if (sqlite3_open(db_name.c_str(), &db) != SQLITE_OK) {
+    std::cerr << "Cannot open database: " << sqlite3_errmsg(db) << "\n";
+    db = nullptr;
+  }
+
+  if (db) {
+    if (setup_tables() != LibRetCode::SetupTablesRes::Success) {
+      std::cerr << "Could not create database tables: " << sqlite3_errmsg(db)
+                << "\n";
+
+      sqlite3_close(db);
+      db = nullptr;
+    }
+  }
+}
+
+Library::~Library() {
+  if (db)
+    sqlite3_close(db);
+}
+
+LibRetCode::SetupTablesRes Library::setup_tables() {
+  const std::string directories_table_sql =
+      "CREATE TABLE IF NOT EXISTS directories ("
+      "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+      "path TEXT UNIQUE"
+      ");";
+
+  sqlite3_stmt *stmt = nullptr;
+  if (sqlite3_prepare_v2(db, directories_table_sql.c_str(), -1, &stmt,
+                         nullptr) != SQLITE_OK) {
+    PRINT_SQLITE_ERR(db);
+    return LibRetCode::SetupTablesRes::SqlError;
+  }
+
+  int rc = sqlite3_step(stmt);
+  if (rc != SQLITE_DONE) {
+    PRINT_SQLITE_ERR(db);
+    sqlite3_finalize(stmt);
+    return LibRetCode::SetupTablesRes::SqlError;
+  }
+
+  sqlite3_finalize(stmt);
+
+  return LibRetCode::SetupTablesRes::Success;
+}
+
+LibRetCode::AddDirRes Library::add_directory(const std::string &path,
+                                             int &result_id) {
+  if (!db)
+    return LibRetCode::AddDirRes::SqlError;
+
+  const std::string check_sql =
+      "SELECT COUNT(*) FROM directories WHERE path = ?;";
+  sqlite3_stmt *check_stmt = nullptr;
+  if (sqlite3_prepare_v2(db, check_sql.c_str(), -1, &check_stmt, nullptr) !=
+      SQLITE_OK) {
+    PRINT_SQLITE_ERR(db);
+    return LibRetCode::AddDirRes::SqlError;
+  }
+
+  if (sqlite3_bind_text(check_stmt, 1, path.c_str(), -1, SQLITE_STATIC) !=
+      SQLITE_OK) {
+    PRINT_SQLITE_ERR(db);
+    sqlite3_finalize(check_stmt);
+    return LibRetCode::AddDirRes::SqlError;
+  }
+
+  int rc = sqlite3_step(check_stmt);
+  if (rc != SQLITE_ROW) {
+    PRINT_SQLITE_ERR(db);
+    sqlite3_finalize(check_stmt);
+    return LibRetCode::AddDirRes::SqlError;
+  }
+
+  int count = sqlite3_column_int(check_stmt, 0);
+  sqlite3_finalize(check_stmt);
+
+  if (count > 0) {
+    return LibRetCode::AddDirRes::PathAlreadyExists;
+  }
+
+  const std::string insert_sql = "INSERT INTO directories (path) VALUES (?);";
+  sqlite3_stmt *insert_stmt = nullptr;
+  if (sqlite3_prepare_v2(db, insert_sql.c_str(), -1, &insert_stmt, nullptr) !=
+      SQLITE_OK) {
+    PRINT_SQLITE_ERR(db);
+    return LibRetCode::AddDirRes::SqlError;
+  }
+
+  if (sqlite3_bind_text(insert_stmt, 1, path.c_str(), -1, SQLITE_STATIC) !=
+      SQLITE_OK) {
+    PRINT_SQLITE_ERR(db);
+    sqlite3_finalize(insert_stmt);
+    return LibRetCode::AddDirRes::SqlError;
+  }
+
+  rc = sqlite3_step(insert_stmt);
+
+  sqlite3_finalize(insert_stmt);
+
+  if (rc != SQLITE_DONE) {
+    PRINT_SQLITE_ERR(db);
+    return LibRetCode::AddDirRes::SqlError;
+  }
+
+  result_id = static_cast<int>(sqlite3_last_insert_rowid(db));
+
+  return LibRetCode::AddDirRes::Success;
+}
+
+LibRetCode::GetDirRes
+Library::get_directories_map(std::map<int, LibEntity::Directory> &result) {
+  if (!db)
+    return LibRetCode::GetDirRes::SqlError;
+
+  result.clear();
+
+  const std::string q = "SELECT * FROM directories;";
+  sqlite3_stmt *stmt = nullptr;
+  if (sqlite3_prepare_v2(db, q.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    PRINT_SQLITE_ERR(db);
+    return LibRetCode::GetDirRes::SqlError;
+  }
+
+  while (sqlite3_step(stmt) == SQLITE_ROW) {
+    int id = sqlite3_column_int(stmt, 0);
+    const unsigned char *path_text = sqlite3_column_text(stmt, 1);
+    std::string path =
+        path_text ? reinterpret_cast<const char *>(path_text) : "";
+
+    result[id] = LibEntity::Directory{id, path};
+  }
+
+  sqlite3_finalize(stmt);
+
+  return LibRetCode::GetDirRes::Success;
+}
+
+LibRetCode::GetDirRes
+Library::get_directories_list(std::vector<LibEntity::Directory> &result) {
+  if (!db)
+    return LibRetCode::GetDirRes::SqlError;
+
+  result.clear();
+
+  const std::string count_q = "SELECT COUNT(*) FROM directories;";
+  sqlite3_stmt *count_stmt = nullptr;
+  if (sqlite3_prepare_v2(db, count_q.c_str(), -1, &count_stmt, nullptr) !=
+      SQLITE_OK) {
+    PRINT_SQLITE_ERR(db);
+    return LibRetCode::GetDirRes::SqlError;
+  }
+
+  int rc = sqlite3_step(count_stmt);
+  if (rc != SQLITE_ROW) {
+    PRINT_SQLITE_ERR(db);
+    sqlite3_finalize(count_stmt);
+    return LibRetCode::GetDirRes::SqlError;
+  }
+
+  int count = sqlite3_column_int(count_stmt, 0);
+
+  sqlite3_finalize(count_stmt);
+
+  result.reserve(count);
+
+  const std::string q = "SELECT * FROM directories;";
+  sqlite3_stmt *stmt = nullptr;
+  if (sqlite3_prepare_v2(db, q.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    PRINT_SQLITE_ERR(db);
+    return LibRetCode::GetDirRes::SqlError;
+  }
+
+  while (sqlite3_step(stmt) == SQLITE_ROW) {
+    int id = sqlite3_column_int(stmt, 0);
+    const unsigned char *path_text = sqlite3_column_text(stmt, 1);
+    std::string path =
+        path_text ? reinterpret_cast<const char *>(path_text) : "";
+
+    result.emplace_back(id, std::move(path));
+  }
+
+  sqlite3_finalize(stmt);
+
+  return LibRetCode::GetDirRes::Success;
+}
+
+LibRetCode::GetDirRes Library::get_directory(int id,
+                                             LibEntity::Directory &result) {
+  if (!db)
+    return LibRetCode::GetDirRes::SqlError;
+
+  const std::string q = "SELECT * FROM directories WHERE id = ?;";
+  sqlite3_stmt *stmt = nullptr;
+  if (sqlite3_prepare_v2(db, q.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    PRINT_SQLITE_ERR(db);
+    return LibRetCode::GetDirRes::SqlError;
+  }
+
+  if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
+    PRINT_SQLITE_ERR(db);
+    sqlite3_finalize(stmt);
+    return LibRetCode::GetDirRes::SqlError;
+  }
+
+  int rc = sqlite3_step(stmt);
+  if (rc != SQLITE_ROW) {
+    sqlite3_finalize(stmt);
+
+    return LibRetCode::GetDirRes::NotFound;
+  }
+
+  result.id = sqlite3_column_int(stmt, 0);
+  const unsigned char *path_text = sqlite3_column_text(stmt, 1);
+  result.path = path_text ? reinterpret_cast<const char *>(path_text) : "";
+
+  sqlite3_finalize(stmt);
+
+  return LibRetCode::GetDirRes::Success;
+}
+
+LibRetCode::RmvDirRes Library::remove_directory(int id) {
+  if (!db)
+    return LibRetCode::RmvDirRes::SqlError;
+
+  const std::string sql = "DELETE FROM directories WHERE id = ?;";
+  sqlite3_stmt *stmt = nullptr;
+  if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    PRINT_SQLITE_ERR(db);
+    return LibRetCode::RmvDirRes::SqlError;
+  }
+
+  if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
+    PRINT_SQLITE_ERR(db);
+    sqlite3_finalize(stmt);
+    return LibRetCode::RmvDirRes::SqlError;
+  }
+
+  int rc = sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
+
+  if (rc != SQLITE_DONE) {
+    PRINT_SQLITE_ERR(db);
+    return LibRetCode::RmvDirRes::SqlError;
+  }
+
+  return LibRetCode::RmvDirRes::Success;
+}
+
+LibRetCode::ScanRes Library::full_scan() {
+  return LibRetCode::ScanRes::Success;
+}
+
+LibRetCode::ScanRes Library::partial_scan(int dir_id) {
+  return LibRetCode::ScanRes::Success;
+}
+
+LibRetCode::UpdateFromDBRes Library::populate_from_db() {
+  return LibRetCode::UpdateFromDBRes::Success;
+}
