@@ -1,5 +1,6 @@
 #pragma once
 #include <map>
+#include <optional>
 #include <sqlite3.h>
 #include <string>
 #include <vector>
@@ -63,16 +64,16 @@ struct Directory {
 struct File {
   int id;
   int dir_id;
-  std::string subdir_path;
-  std::string title;
-  std::string album;
-  std::string artist;
-  std::string albumartist;
-  std::string composer;
-  int track_number;
-  int disc_number;
-  int year;
-  std::string genre;
+  std::optional<std::string> subdir_path;
+  std::string filename;
+  std::optional<std::string> title;
+  std::optional<std::string> album;
+  std::optional<std::string> artist;
+  std::optional<std::string> albumartist;
+  std::optional<int> track_number;
+  std::optional<int> disc_number;
+  std::optional<int> year;
+  std::optional<std::string> genre;
   int length;
   int bitrate;
   int filesize;
@@ -111,6 +112,8 @@ public:
   Library(const std::string &db_name);
   ~Library();
 
+  bool is_initialized();
+
   LibRetCode::AddDirRes add_directory(const std::string &path, int &result_id);
   LibRetCode::GetDirRes
   get_directories_map(std::map<int, LibEntity::Directory> &result);
@@ -135,7 +138,7 @@ private:
 
   LibRetCode::SetupTablesRes setup_tables();
 
-  LibRetCode::AddFileRes add_file(LibEntity::File &file);
+  LibRetCode::AddFileRes add_file(const LibEntity::File &file, int &result_id);
   LibRetCode::GetFileRes get_file(int id, LibEntity::File &result);
   LibRetCode::RmvFileRes remove_file(int id);
 };
