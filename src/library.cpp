@@ -460,6 +460,16 @@ LibRetCode::ScanRes Library::full_scan() {
         LibRetCode::ScanRes::Success) {
       return LibRetCode::ScanRes::GettingUnreadFilesError;
     }
+
+    for (const auto &[k, f] : saved_files) {
+      std::filesystem::path fullpath =
+          get_file_fullpath(f.fulldir_path, f.filename);
+      if (!std::filesystem::exists(fullpath)) {
+        if (remove_file(f.id) != LibRetCode::RmvFileRes::Success) {
+          return LibRetCode::ScanRes::SqlError;
+        }
+      }
+    }
   }
 
   std::cout << unread_file_count << " unread file found" << '\n';
