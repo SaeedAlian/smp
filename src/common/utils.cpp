@@ -1,4 +1,5 @@
 #include "utils.hpp"
+#include <chrono>
 
 int bind_opt_text(sqlite3_stmt *stmt, int index,
                   const std::optional<std::string> &val) {
@@ -45,4 +46,17 @@ std::optional<int> read_nullable_int_column(sqlite3_stmt *stmt, int index) {
   } else {
     return result;
   }
+}
+
+std::int64_t get_file_mtime_epoch(const std::filesystem::path &path) {
+  std::filesystem::file_time_type ftime =
+      std::filesystem::last_write_time(path);
+
+  auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+      ftime - std::filesystem::file_time_type::clock::now() +
+      std::chrono::system_clock::now());
+
+  return std::chrono::duration_cast<std::chrono::seconds>(
+             sctp.time_since_epoch())
+      .count();
 }

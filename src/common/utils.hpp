@@ -1,4 +1,5 @@
 #pragma once
+#include <filesystem>
 #include <optional>
 #include <sqlite3.h>
 #include <string>
@@ -13,3 +14,5 @@ std::optional<std::string> read_nullable_string_column(sqlite3_stmt *stmt,
                                                        int index);
 
 std::optional<int> read_nullable_int_column(sqlite3_stmt *stmt, int index);
+
+std::int64_t get_file_mtime_epoch(const std::filesystem::path &path);

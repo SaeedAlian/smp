@@ -20,7 +20,7 @@ set(SRC_FILES
 add_executable(musicplayer ${SRC_FILES})
 
 # Link libraries
-target_link_libraries(musicplayer PRIVATE ncurses fmt sqlite3)
+target_link_libraries(musicplayer PRIVATE ncurses fmt sqlite3 tag)
 
 # -----------------------------------
 # Unit Tests
@@ -36,6 +36,6 @@ set(TEST_FILES
 
 add_executable(musicplayer_test ${TEST_FILES})
 target_include_directories(musicplayer_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_link_libraries(musicplayer_test PRIVATE gtest gtest_main pthread fmt sqlite3)
+target_link_libraries(musicplayer_test PRIVATE gtest gtest_main pthread fmt sqlite3 tag)
 
 add_test(NAME LibraryTest COMMAND musicplayer_test)
