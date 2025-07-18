@@ -228,7 +228,7 @@ private:
                                         const LibEntity::File &updated_file);
   LibRetCode::RmvFileRes remove_file(int id);
 
-  LibRetCode::ScanRes scan_dir_unread_files(
+  LibRetCode::ScanRes scan_dir_changed_files(
       LibEntity::Directory dir,
       const std::map<std::filesystem::path, LibEntity::FileMainProps>
           &saved_files,

@@ -290,7 +290,7 @@ LibRetCode::RmvDirRes Library::remove_directory(int id) {
   return LibRetCode::RmvDirRes::Success;
 }
 
-LibRetCode::ScanRes Library::scan_dir_unread_files(
+LibRetCode::ScanRes Library::scan_dir_changed_files(
     LibEntity::Directory dir,
     const std::map<std::filesystem::path, LibEntity::FileMainProps>
         &saved_files,
@@ -455,8 +455,9 @@ LibRetCode::ScanRes Library::full_scan() {
       return LibRetCode::ScanRes::SqlError;
     }
 
-    if (scan_dir_unread_files(dir, saved_files, unread_files, unread_file_count,
-                              update_needed_files, update_needed_file_count) !=
+    if (scan_dir_changed_files(dir, saved_files, unread_files,
+                               unread_file_count, update_needed_files,
+                               update_needed_file_count) !=
         LibRetCode::ScanRes::Success) {
       return LibRetCode::ScanRes::GettingUnreadFilesError;
     }
