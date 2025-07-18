@@ -188,6 +188,10 @@ public:
   LibRetCode::RmvDirRes remove_directory(int id);
 
   LibEntity::FileType get_filetype(const std::filesystem::path &path);
+  std::filesystem::path get_file_fullpath(const LibEntity::File &file);
+  std::filesystem::path
+  get_file_fullpath(const std::filesystem::path fulldir_path,
+                    const std::filesystem::path filename);
 
   LibRetCode::ScanRes full_scan();
   LibRetCode::ScanRes partial_scan(int dir_id);

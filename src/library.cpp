@@ -399,8 +399,7 @@ LibRetCode::ScanRes Library::populate_files_into_db(
   for (const LibEntity::File &file : update_needed_files) {
     LibEntity::File newfile;
 
-    std::filesystem::path fullpath =
-        fmt::format("{}/{}", file.fulldir_path.c_str(), file.filename.c_str());
+    std::filesystem::path fullpath = get_file_fullpath(file);
 
     if (read_file_tags(fullpath, newfile) !=
         LibRetCode::ReadFileTagsRes::Success) {
@@ -835,8 +834,7 @@ LibRetCode::GetFileRes Library::get_dir_files_main_props(
     LibEntity::FileType filetype =
         (LibEntity::FileType)sqlite3_column_int(stmt, idx++);
 
-    std::filesystem::path fullpath =
-        fmt::format("{}/{}", fulldir_path.c_str(), filename.c_str());
+    std::filesystem::path fullpath = get_file_fullpath(fulldir_path, filename);
 
     result[fullpath] = LibEntity::FileMainProps{
         id,           dir_id,        filename, fulldir_path,
@@ -1104,4 +1102,18 @@ std::ostream &operator<<(std::ostream &os, const LibEntity::File &f) {
   os << "Size: " << f.filesize << '\n';
   os << "FileType: " << (int)f.filetype << '\n';
   return os;
+}
+
+std::filesystem::path get_file_fullpath(const LibEntity::File &file) {
+  std::filesystem::path fullpath =
+      fmt::format("{}/{}", file.fulldir_path.c_str(), file.filename.c_str());
+  return fullpath;
+}
+
+std::filesystem::path
+get_file_fullpath(const std::filesystem::path fulldir_path,
+                  const std::filesystem::path filename) {
+  std::filesystem::path fullpath =
+      fmt::format("{}/{}", fulldir_path.c_str(), filename.c_str());
+  return fullpath;
 }
