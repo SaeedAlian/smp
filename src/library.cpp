@@ -1114,15 +1114,15 @@ std::ostream &operator<<(std::ostream &os, const LibEntity::File &f) {
   return os;
 }
 
-std::filesystem::path get_file_fullpath(const LibEntity::File &file) {
+std::filesystem::path Library::get_file_fullpath(const LibEntity::File &file) {
   std::filesystem::path fullpath =
       fmt::format("{}/{}", file.fulldir_path.c_str(), file.filename.c_str());
   return fullpath;
 }
 
 std::filesystem::path
-get_file_fullpath(const std::filesystem::path fulldir_path,
-                  const std::filesystem::path filename) {
+Library::get_file_fullpath(const std::filesystem::path fulldir_path,
+                           const std::filesystem::path filename) {
   std::filesystem::path fullpath =
       fmt::format("{}/{}", fulldir_path.c_str(), filename.c_str());
   return fullpath;
