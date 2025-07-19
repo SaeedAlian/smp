@@ -32,6 +32,8 @@ enum class UpdateFileRes { Success = 0, SqlError, NotFound };
 enum class RmvFileRes { Success = 0, SqlError };
 enum class SetupTablesRes { Success = 0, SqlError };
 enum class ReadFileTagsRes { Success = 0, CannotReadTags };
+enum class GetArtistsRes { Success = 0, SqlError };
+enum class GetArtistAlbumsRes { Success = 0, SqlError };
 
 }; // namespace LibRetCode
 
@@ -40,19 +42,25 @@ namespace LibOption {
 enum class SortArtistsBy {
   NameAsc = 0,
   NameDesc,
-  NumberOfAlbumsAsc,
-  NumberOfAlbumsDesc,
 };
 
 enum class SortAlbumsBy {
   NameAsc = 0,
   NameDesc,
-  NumberOfTracksAsc,
-  NumberOfTracksDesc,
   YearAscAndNameAsc,
   YearDescAndNameAsc,
   YearAscAndNameDesc,
   YearDescAndNameDesc,
+};
+
+struct ArtistsOptions {
+  SortArtistsBy sortby;
+  bool use_albumartist;
+};
+
+struct AlbumsOptions {
+  SortAlbumsBy sortby;
+  bool use_albumartist;
 };
 
 }; // namespace LibOption
@@ -154,18 +162,40 @@ struct Track {
   int bitrate;
   unsigned int filesize;
   FileType filetype;
+
+  Track() = default;
+  Track(int file_id__, int dir_id__, std::filesystem::path filename__,
+        std::filesystem::path fulldir_path__, std::string title__,
+        int track_number__, int disc_number__, int length__, int bitrate__,
+        unsigned int filesize__, FileType filetype__)
+      : file_id(file_id__), dir_id(dir_id__), filename(filename__),
+        fulldir_path(fulldir_path__), title(title__),
+        track_number(track_number__), disc_number(disc_number__),
+        length(length__), bitrate(bitrate__), filesize(filesize__),
+        filetype(filetype__) {}
 };
 
 struct Album {
   std::string title;
   std::string genre;
   int year;
+  int track_count;
   std::vector<Track> tracks;
+
+  Album() = default;
+  Album(std::string title__, std::string genre__, int year__, int track_count__)
+      : title(title__), genre(genre__), year(year__),
+        track_count(track_count__) {}
 };
 
 struct Artist {
   std::string name;
+  int album_count;
   std::vector<Album> albums;
+
+  Artist() = default;
+  Artist(std::string name__, int album_count__)
+      : name(name__), album_count(album_count__) {}
 };
 
 std::ostream &operator<<(std::ostream &os, const LibEntity::File &f);
@@ -197,7 +227,11 @@ public:
   LibRetCode::ScanRes full_scan();
   LibRetCode::ScanRes partial_scan(int dir_id);
 
-  LibRetCode::UpdateFromDBRes update_from_db();
+  LibRetCode::GetArtistsRes get_artists(std::vector<LibEntity::Artist> &artists,
+                                        LibOption::ArtistsOptions opts);
+
+  LibRetCode::GetArtistAlbumsRes
+  get_artist_albums(LibEntity::Artist &artist, LibOption::AlbumsOptions opts);
 
   LibRetCode::ReadFileTagsRes read_file_tags(std::filesystem::path fullpath,
                                              LibEntity::File &result);
@@ -205,11 +239,6 @@ public:
 private:
   sqlite3 *db;
   std::string db_name;
-  std::vector<LibEntity::Artist> artists;
-  bool use_albumartist = false;
-  LibOption::SortArtistsBy artists_sort = LibOption::SortArtistsBy::NameAsc;
-  LibOption::SortAlbumsBy albums_sort =
-      LibOption::SortAlbumsBy::YearAscAndNameAsc;
 
   LibRetCode::SetupTablesRes setup_tables();
 

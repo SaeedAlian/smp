@@ -528,8 +528,265 @@ LibRetCode::ScanRes Library::partial_scan(int dir_id) {
   return LibRetCode::ScanRes::Success;
 }
 
-LibRetCode::UpdateFromDBRes Library::update_from_db() {
-  return LibRetCode::UpdateFromDBRes::Success;
+LibRetCode::GetArtistsRes
+Library::get_artists(std::vector<LibEntity::Artist> &artists,
+                     LibOption::ArtistsOptions opts) {
+  artists.clear();
+
+  std::string colname =
+      opts.use_albumartist
+          ? "DISTINCT(COALESCE(NULLIF(albumartist, ''), "
+            "NULLIF(artist, ''), 'Unknown Artist'))"
+          : "DISTINCT(COALESCE(NULLIF(artist, ''), 'Unknown Artist'))";
+
+  std::string orderby = "a ASC";
+
+  switch (opts.sortby) {
+  case LibOption::SortArtistsBy::NameDesc: {
+    orderby = "a DESC";
+    break;
+  }
+
+  default: {
+    break;
+  }
+  }
+
+  std::string count_q = fmt::format("SELECT COUNT({}) FROM files;", colname);
+  sqlite3_stmt *count_stmt = nullptr;
+  if (sqlite3_prepare_v2(db, count_q.c_str(), -1, &count_stmt, nullptr) !=
+      SQLITE_OK) {
+    PRINT_SQLITE_ERR(db);
+    return LibRetCode::GetArtistsRes::SqlError;
+  }
+
+  int rc = sqlite3_step(count_stmt);
+  if (rc != SQLITE_ROW) {
+    PRINT_SQLITE_ERR(db);
+    sqlite3_finalize(count_stmt);
+    return LibRetCode::GetArtistsRes::SqlError;
+  }
+
+  int count = sqlite3_column_int(count_stmt, 0);
+
+  sqlite3_finalize(count_stmt);
+
+  artists.reserve(count);
+
+  std::string q = fmt::format("SELECT {} AS a, COUNT(DISTINCT(album)) AS c "
+                              "FROM files GROUP BY a ORDER BY {};",
+                              colname, orderby);
+  sqlite3_stmt *stmt = nullptr;
+  if (sqlite3_prepare_v2(db, q.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    PRINT_SQLITE_ERR(db);
+    return LibRetCode::GetArtistsRes::SqlError;
+  }
+
+  while (sqlite3_step(stmt) == SQLITE_ROW) {
+    int idx = 0;
+
+    std::string name =
+        convert_unsigned_char_ptr_to_string(sqlite3_column_text(stmt, idx++));
+    int album_count = sqlite3_column_int(stmt, idx++);
+
+    artists.emplace_back(name, album_count);
+  }
+
+  sqlite3_finalize(stmt);
+
+  return LibRetCode::GetArtistsRes::Success;
+}
+
+LibRetCode::GetArtistAlbumsRes
+Library::get_artist_albums(LibEntity::Artist &artist,
+                           LibOption::AlbumsOptions opts) {
+  artist.albums.clear();
+
+  std::string colname =
+      opts.use_albumartist ? "artist = ? OR albumartist = ?" : "artist = ?";
+
+  std::string orderby = "album ASC";
+
+  switch (opts.sortby) {
+  case LibOption::SortAlbumsBy::NameDesc: {
+    orderby = "album DESC";
+    break;
+  }
+
+  case LibOption::SortAlbumsBy::YearAscAndNameAsc: {
+    orderby = "year ASC, album ASC";
+    break;
+  }
+
+  case LibOption::SortAlbumsBy::YearAscAndNameDesc: {
+    orderby = "year ASC, album DESC";
+    break;
+  }
+
+  case LibOption::SortAlbumsBy::YearDescAndNameAsc: {
+    orderby = "year DESC, album ASC";
+    break;
+  }
+
+  case LibOption::SortAlbumsBy::YearDescAndNameDesc: {
+    orderby = "year DESC, album DESC";
+    break;
+  }
+
+  default: {
+    break;
+  }
+  }
+
+  std::string count_q = fmt::format(
+      "SELECT COUNT(DISTINCT(album)) FROM files WHERE {};", colname);
+  sqlite3_stmt *count_stmt = nullptr;
+  if (sqlite3_prepare_v2(db, count_q.c_str(), -1, &count_stmt, nullptr) !=
+      SQLITE_OK) {
+    PRINT_SQLITE_ERR(db);
+    return LibRetCode::GetArtistAlbumsRes::SqlError;
+  }
+
+  if (sqlite3_bind_text(count_stmt, 1, artist.name.c_str(), -1,
+                        SQLITE_STATIC) != SQLITE_OK) {
+    PRINT_SQLITE_ERR(db);
+    sqlite3_finalize(count_stmt);
+    return LibRetCode::GetArtistAlbumsRes::SqlError;
+  }
+
+  if (opts.use_albumartist) {
+    if (sqlite3_bind_text(count_stmt, 2, artist.name.c_str(), -1,
+                          SQLITE_STATIC) != SQLITE_OK) {
+      PRINT_SQLITE_ERR(db);
+      sqlite3_finalize(count_stmt);
+      return LibRetCode::GetArtistAlbumsRes::SqlError;
+    }
+  }
+
+  int rc = sqlite3_step(count_stmt);
+  if (rc != SQLITE_ROW) {
+    PRINT_SQLITE_ERR(db);
+    sqlite3_finalize(count_stmt);
+    return LibRetCode::GetArtistAlbumsRes::SqlError;
+  }
+
+  int count = sqlite3_column_int(count_stmt, 0);
+
+  sqlite3_finalize(count_stmt);
+
+  artist.albums.resize(count);
+
+  std::string q = fmt::format("SELECT album, genre, year, COUNT(title)"
+                              "FROM files WHERE {} GROUP BY album ORDER BY {};",
+                              colname, orderby);
+  sqlite3_stmt *stmt = nullptr;
+  if (sqlite3_prepare_v2(db, q.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    PRINT_SQLITE_ERR(db);
+    return LibRetCode::GetArtistAlbumsRes::SqlError;
+  }
+
+  if (sqlite3_bind_text(stmt, 1, artist.name.c_str(), -1, SQLITE_STATIC) !=
+      SQLITE_OK) {
+    PRINT_SQLITE_ERR(db);
+    sqlite3_finalize(stmt);
+    return LibRetCode::GetArtistAlbumsRes::SqlError;
+  }
+
+  if (opts.use_albumartist) {
+    if (sqlite3_bind_text(stmt, 2, artist.name.c_str(), -1, SQLITE_STATIC) !=
+        SQLITE_OK) {
+      PRINT_SQLITE_ERR(db);
+      sqlite3_finalize(stmt);
+      return LibRetCode::GetArtistAlbumsRes::SqlError;
+    }
+  }
+
+  int i = 0;
+
+  while (sqlite3_step(stmt) == SQLITE_ROW) {
+    int idx = 0;
+
+    std::string album_name =
+        convert_unsigned_char_ptr_to_string(sqlite3_column_text(stmt, idx++));
+    std::string genre =
+        convert_unsigned_char_ptr_to_string(sqlite3_column_text(stmt, idx++));
+    int year = sqlite3_column_int(stmt, idx++);
+    int track_count = sqlite3_column_int(stmt, idx++);
+
+    LibEntity::Album album =
+        LibEntity::Album{album_name, genre, year, track_count};
+
+    album.tracks.reserve(track_count);
+
+    std::string tq =
+        fmt::format("SELECT "
+                    "id, dir_id, filename, fulldir_path, title, track_number, "
+                    "disc_number, length, bitrate, filesize, filetype "
+                    "FROM files WHERE ({}) AND album = ? ORDER BY disc_number "
+                    "ASC, track_number ASC;",
+                    colname);
+    sqlite3_stmt *tstmt = nullptr;
+    if (sqlite3_prepare_v2(db, tq.c_str(), -1, &tstmt, nullptr) != SQLITE_OK) {
+      PRINT_SQLITE_ERR(db);
+      return LibRetCode::GetArtistAlbumsRes::SqlError;
+    }
+
+    int tbind_idx = 1;
+
+    if (sqlite3_bind_text(tstmt, tbind_idx++, artist.name.c_str(), -1,
+                          SQLITE_STATIC) != SQLITE_OK) {
+      PRINT_SQLITE_ERR(db);
+      sqlite3_finalize(tstmt);
+      return LibRetCode::GetArtistAlbumsRes::SqlError;
+    }
+
+    if (opts.use_albumartist) {
+      if (sqlite3_bind_text(tstmt, tbind_idx++, artist.name.c_str(), -1,
+                            SQLITE_STATIC) != SQLITE_OK) {
+        PRINT_SQLITE_ERR(db);
+        sqlite3_finalize(tstmt);
+        return LibRetCode::GetArtistAlbumsRes::SqlError;
+      }
+    }
+
+    if (sqlite3_bind_text(tstmt, tbind_idx++, album_name.c_str(), -1,
+                          SQLITE_STATIC) != SQLITE_OK) {
+      PRINT_SQLITE_ERR(db);
+      sqlite3_finalize(tstmt);
+      return LibRetCode::GetArtistAlbumsRes::SqlError;
+    }
+
+    while (sqlite3_step(tstmt) == SQLITE_ROW) {
+      int tidx = 0;
+
+      int id = sqlite3_column_int(tstmt, tidx++);
+      int dir_id = sqlite3_column_int(tstmt, tidx++);
+      std::filesystem::path filename = convert_unsigned_char_ptr_to_string(
+          sqlite3_column_text(tstmt, tidx++));
+      std::filesystem::path fulldir_path = convert_unsigned_char_ptr_to_string(
+          sqlite3_column_text(tstmt, tidx++));
+      std::string title = convert_unsigned_char_ptr_to_string(
+          sqlite3_column_text(tstmt, tidx++));
+      int track_number = sqlite3_column_int(tstmt, tidx++);
+      int disc_number = sqlite3_column_int(tstmt, tidx++);
+      int length = sqlite3_column_int(tstmt, tidx++);
+      int bitrate = sqlite3_column_int(tstmt, tidx++);
+      int filesize = sqlite3_column_int(tstmt, tidx++);
+      LibEntity::FileType filetype =
+          (LibEntity::FileType)sqlite3_column_int(tstmt, tidx++);
+
+      album.tracks.emplace_back(id, dir_id, filename, fulldir_path, title,
+                                track_number, disc_number, length, bitrate,
+                                filesize, filetype);
+    }
+
+    sqlite3_finalize(tstmt);
+    artist.albums[i++] = album;
+  }
+
+  sqlite3_finalize(stmt);
+
+  return LibRetCode::GetArtistAlbumsRes::Success;
 }
 
 LibRetCode::ReadFileTagsRes
