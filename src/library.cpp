@@ -544,6 +544,9 @@ Library::read_file_tags(std::filesystem::path fullpath,
   TagLib::PropertyMap props = f.properties();
 
   TagLib::StringList albumartist_list = props["ALBUMARTIST"];
+  if (albumartist_list.size() == 0) {
+    albumartist_list = props["ALBUM ARTIST"];
+  }
 
   std::string albumartist = "";
   int disc_number = 0;
@@ -553,6 +556,10 @@ Library::read_file_tags(std::filesystem::path fullpath,
   }
 
   TagLib::StringList disc_number_list = props["DISCNUMBER"];
+  if (disc_number_list.size() == 0) {
+    disc_number_list = props["DISC NUMBER"];
+  }
+
   if (disc_number_list.size() > 0) {
     std::string val = disc_number_list[0].to8Bit(true);
     try {
