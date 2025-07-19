@@ -482,6 +482,49 @@ LibRetCode::ScanRes Library::full_scan() {
 }
 
 LibRetCode::ScanRes Library::partial_scan(int dir_id) {
+  LibEntity::Directory dir;
+  if (get_directory(dir_id, dir) != LibRetCode::GetDirRes::Success) {
+    return LibRetCode::ScanRes::CannotGetDir;
+  }
+
+  std::forward_list<LibEntity::UnreadFile> unread_files;
+  int unread_file_count = 0;
+
+  std::forward_list<LibEntity::File> update_needed_files;
+  int update_needed_file_count = 0;
+
+  std::map<std::filesystem::path, LibEntity::FileMainProps> saved_files;
+
+  if (get_dir_files_main_props(dir.id, saved_files) !=
+      LibRetCode::GetFileRes::Success) {
+    return LibRetCode::ScanRes::SqlError;
+  }
+
+  if (scan_dir_changed_files(dir, saved_files, unread_files, unread_file_count,
+                             update_needed_files, update_needed_file_count) !=
+      LibRetCode::ScanRes::Success) {
+    return LibRetCode::ScanRes::GettingUnreadFilesError;
+  }
+
+  for (const auto &[k, f] : saved_files) {
+    std::filesystem::path fullpath =
+        get_file_fullpath(f.fulldir_path, f.filename);
+    if (!std::filesystem::exists(fullpath)) {
+      if (remove_file(f.id) != LibRetCode::RmvFileRes::Success) {
+        return LibRetCode::ScanRes::SqlError;
+      }
+    }
+  }
+
+  std::cout << unread_file_count << " unread file found" << '\n';
+  std::cout << update_needed_file_count << " update needed file found" << '\n';
+
+  if (populate_files_into_db(unread_files, unread_file_count,
+                             update_needed_files, update_needed_file_count) !=
+      LibRetCode::ScanRes::Success) {
+    return LibRetCode::ScanRes::AddingUnreadFilesError;
+  }
+
   return LibRetCode::ScanRes::Success;
 }
 

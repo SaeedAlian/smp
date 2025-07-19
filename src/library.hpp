@@ -15,6 +15,7 @@ enum class RmvDirRes { Success = 0, SqlError };
 enum class ScanRes {
   Success = 0,
   CannotGetDirs,
+  CannotGetDir,
   SqlError,
   GettingUnreadFilesError,
   AddingUnreadFilesError,
