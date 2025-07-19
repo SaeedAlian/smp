@@ -309,14 +309,12 @@ LibRetCode::ScanRes Library::scan_dir_changed_files(
     std::filesystem::path fullpath = entry.path();
     std::filesystem::path basename = fullpath.filename();
     std::filesystem::path fulldir_path = fullpath.parent_path();
-    std::filesystem::path subdir_path =
-        std::filesystem::relative(fulldir_path, dir.path);
 
     uintmax_t filesize = std::filesystem::file_size(fullpath);
 
     std::int64_t cftime = get_file_mtime_epoch(fullpath);
 
-    if (saved_files.find(fullpath) != saved_files.end()) {
+    try {
       LibEntity::FileMainProps existed_file = saved_files.at(fullpath);
       if (existed_file.modified_time == cftime &&
           existed_file.filesize == filesize) {
@@ -335,22 +333,21 @@ LibRetCode::ScanRes Library::scan_dir_changed_files(
 
       update_needed_file_count++;
       update_needed_files.push_front(update_needed_file);
-      continue;
+    } catch (std::out_of_range) {
+      LibEntity::UnreadFile unread_file;
+
+      unread_file.fullpath = fullpath;
+      unread_file.filename = basename;
+      unread_file.dir_id = dir.id;
+      unread_file.fulldir_path = fulldir_path;
+      unread_file.created_time = cftime;
+      unread_file.modified_time = cftime;
+      unread_file.filesize = filesize;
+      unread_file.filetype = filetype;
+
+      unread_file_count++;
+      unread_files.push_front(unread_file);
     }
-
-    LibEntity::UnreadFile unread_file;
-
-    unread_file.fullpath = fullpath;
-    unread_file.filename = basename;
-    unread_file.dir_id = dir.id;
-    unread_file.fulldir_path = fulldir_path;
-    unread_file.created_time = cftime;
-    unread_file.modified_time = cftime;
-    unread_file.filesize = filesize;
-    unread_file.filetype = filetype;
-
-    unread_file_count++;
-    unread_files.push_front(unread_file);
   }
 
   return LibRetCode::ScanRes::Success;
