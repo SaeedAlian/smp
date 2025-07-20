@@ -81,6 +81,8 @@ public:
 
   DBRetCode::AddFileRes add_file(const Entity::File &file, int &result_id);
   DBRetCode::GetFileRes get_file(int id, Entity::File &result);
+  DBRetCode::GetFileRes get_batch_files(const std::vector<int> &ids,
+                                        std::vector<Entity::File> &result);
   DBRetCode::GetFileRes get_dir_files_list(int dir_id,
                                            std::vector<Entity::File> &result);
   DBRetCode::GetFileRes get_dir_files_map(int dir_id,

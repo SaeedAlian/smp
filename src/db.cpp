@@ -730,6 +730,81 @@ DBRetCode::GetFileRes DB::get_file_by_path(int dir_id,
   return get_file_by_path(fulldir_path, filename, result);
 }
 
+DBRetCode::GetFileRes DB::get_batch_files(const std::vector<int> &ids,
+                                          std::vector<Entity::File> &result) {
+  if (!db)
+    return DBRetCode::GetFileRes::SqlError;
+
+  const unsigned int ids_size = ids.size();
+  result.clear();
+  result.reserve(ids_size);
+
+  std::string qparams = "";
+  for (int i = 0; i < ids_size; i++) {
+    if (i == ids_size - 1) {
+      qparams += "?";
+    } else {
+      qparams += "?,";
+    }
+  }
+
+  const std::string q =
+      fmt::format("SELECT * FROM files WHERE id IN ({});", qparams);
+  std::cout << q << '\n';
+  sqlite3_stmt *stmt = nullptr;
+  if (sqlite3_prepare_v2(db, q.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    PRINT_SQLITE_ERR(db);
+    return DBRetCode::GetFileRes::SqlError;
+  }
+
+  for (int i = 0; i < ids_size; i++) {
+    if (sqlite3_bind_int(stmt, i + 1, ids[i]) != SQLITE_OK) {
+      PRINT_SQLITE_ERR(db);
+      sqlite3_finalize(stmt);
+      return DBRetCode::GetFileRes::SqlError;
+    }
+  }
+
+  while (sqlite3_step(stmt) == SQLITE_ROW) {
+    int idx = 0;
+
+    int id = sqlite3_column_int(stmt, idx++);
+    int dir_id = sqlite3_column_int(stmt, idx++);
+    std::filesystem::path filename =
+        convert_unsigned_char_ptr_to_string(sqlite3_column_text(stmt, idx++));
+    std::filesystem::path fulldir_path =
+        convert_unsigned_char_ptr_to_string(sqlite3_column_text(stmt, idx++));
+    int created_time = sqlite3_column_int(stmt, idx++);
+    int modified_time = sqlite3_column_int(stmt, idx++);
+    std::string title =
+        convert_unsigned_char_ptr_to_string(sqlite3_column_text(stmt, idx++));
+    std::string album =
+        convert_unsigned_char_ptr_to_string(sqlite3_column_text(stmt, idx++));
+    std::string artist =
+        convert_unsigned_char_ptr_to_string(sqlite3_column_text(stmt, idx++));
+    std::string albumartist =
+        convert_unsigned_char_ptr_to_string(sqlite3_column_text(stmt, idx++));
+    int track_number = sqlite3_column_int(stmt, idx++);
+    int disc_number = sqlite3_column_int(stmt, idx++);
+    int year = sqlite3_column_int(stmt, idx++);
+    std::string genre =
+        convert_unsigned_char_ptr_to_string(sqlite3_column_text(stmt, idx++));
+    int length = sqlite3_column_int(stmt, idx++);
+    int bitrate = sqlite3_column_int(stmt, idx++);
+    int filesize = sqlite3_column_int(stmt, idx++);
+    Enum::FileType filetype = (Enum::FileType)sqlite3_column_int(stmt, idx++);
+
+    result.emplace_back(id, dir_id, filename, fulldir_path, created_time,
+                        modified_time, title, album, artist, albumartist,
+                        track_number, disc_number, year, genre, length, bitrate,
+                        filesize, filetype);
+  }
+
+  sqlite3_finalize(stmt);
+
+  return DBRetCode::GetFileRes::Success;
+}
+
 DBRetCode::UpdateFileRes DB::update_file(int id,
                                          const Entity::File &updated_file) {
   const std::string sql =
