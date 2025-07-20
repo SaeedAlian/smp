@@ -179,6 +179,33 @@ src/common/utils.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer_test.dir/build.make CMakeFiles/musicplayer_test.dir/src/common/utils.cpp.s
 .PHONY : src/common/utils.cpp.s
 
+src/db.o: src/db.cpp.o
+.PHONY : src/db.o
+
+# target to build an object file
+src/db.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer.dir/build.make CMakeFiles/musicplayer.dir/src/db.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer_test.dir/build.make CMakeFiles/musicplayer_test.dir/src/db.cpp.o
+.PHONY : src/db.cpp.o
+
+src/db.i: src/db.cpp.i
+.PHONY : src/db.i
+
+# target to preprocess a source file
+src/db.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer.dir/build.make CMakeFiles/musicplayer.dir/src/db.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer_test.dir/build.make CMakeFiles/musicplayer_test.dir/src/db.cpp.i
+.PHONY : src/db.cpp.i
+
+src/db.s: src/db.cpp.s
+.PHONY : src/db.s
+
+# target to generate assembly for a file
+src/db.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer.dir/build.make CMakeFiles/musicplayer.dir/src/db.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer_test.dir/build.make CMakeFiles/musicplayer_test.dir/src/db.cpp.s
+.PHONY : src/db.cpp.s
+
 src/library.o: src/library.cpp.o
 .PHONY : src/library.o
 
@@ -268,6 +295,9 @@ help:
 	@echo "... src/common/utils.o"
 	@echo "... src/common/utils.i"
 	@echo "... src/common/utils.s"
+	@echo "... src/db.o"
+	@echo "... src/db.i"
+	@echo "... src/db.s"
 	@echo "... src/library.o"
 	@echo "... src/library.i"
 	@echo "... src/library.s"

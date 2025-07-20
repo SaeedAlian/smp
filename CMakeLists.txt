@@ -12,6 +12,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/build)
 # Source files
 set(SRC_FILES
     src/main.cpp
+    src/db.cpp
     src/library.cpp
     src/common/utils.cpp
 )
@@ -30,6 +31,7 @@ enable_testing()
 # Test files
 set(TEST_FILES
     test/library_test.cpp
+    src/db.cpp
     src/library.cpp
     src/common/utils.cpp
 )
