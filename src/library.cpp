@@ -2,6 +2,7 @@
 #include "common/types.hpp"
 #include "common/utils.hpp"
 #include "db.hpp"
+#include <algorithm>
 #include <filesystem>
 #include <forward_list>
 #include <iostream>
@@ -372,3 +373,136 @@ Library::read_file_tags(std::filesystem::path fullpath, Entity::File &result) {
 
   return LibRetCode::ReadFileTagsRes::Success;
 }
+
+MusicQueue::MusicQueue(DB *db__, int init_size) {
+  queue.reserve(init_size);
+
+  if (db__->is_initialized()) {
+    db = db__;
+  } else {
+    db = nullptr;
+  }
+}
+
+MusicQueue::~MusicQueue() {}
+
+bool MusicQueue::is_initialized() { return db != nullptr; }
+
+QueueRetCode::EnqueueRes MusicQueue::enqueue(int file_id) {
+  Entity::File file;
+  DBRetCode::GetFileRes rc = db->get_file(file_id, file);
+  if (rc == DBRetCode::GetFileRes::NotFound) {
+    return QueueRetCode::EnqueueRes::FileNotFound;
+  }
+
+  if (rc != DBRetCode::GetFileRes::Success) {
+    return QueueRetCode::EnqueueRes::GetFileError;
+  }
+
+  queue.emplace_back(file);
+  return QueueRetCode::EnqueueRes::Success;
+}
+
+QueueRetCode::EnqueueRes
+MusicQueue::batch_enqueue(const std::vector<int> &file_ids) {
+  std::vector<Entity::File> files;
+  DBRetCode::GetFileRes rc = db->get_batch_files(file_ids, files);
+  if (files.size() == 0) {
+    return QueueRetCode::EnqueueRes::FileNotFound;
+  }
+
+  if (rc != DBRetCode::GetFileRes::Success) {
+    return QueueRetCode::EnqueueRes::GetFileError;
+  }
+
+  for (const auto &f : files) {
+    queue.emplace_back(f);
+  }
+
+  return QueueRetCode::EnqueueRes::Success;
+}
+
+QueueRetCode::DequeueRes MusicQueue::dequeue() {
+  if (queue.empty()) {
+    return QueueRetCode::DequeueRes::QueueIsEmpty;
+  }
+
+  queue.erase(queue.begin());
+  return QueueRetCode::DequeueRes::Success;
+}
+
+QueueRetCode::DequeueRes MusicQueue::dequeue(unsigned int index) {
+  if (queue.empty()) {
+    return QueueRetCode::DequeueRes::QueueIsEmpty;
+  }
+
+  if (index >= queue.size()) {
+    return QueueRetCode::DequeueRes::InvalidIndex;
+  }
+
+  queue.erase(queue.begin() + index);
+  return QueueRetCode::DequeueRes::Success;
+}
+
+QueueRetCode::MoveRes MusicQueue::move(unsigned int from_index,
+                                       unsigned int to_index) {
+  int size = queue.size();
+  if (from_index >= size || to_index >= size) {
+    return QueueRetCode::MoveRes::InvalidIndex;
+  }
+
+  Entity::File file = queue[from_index];
+  queue.erase(queue.begin() + from_index);
+  queue.insert(queue.begin() + to_index, file);
+
+  return QueueRetCode::MoveRes::Success;
+}
+
+QueueRetCode::MoveRes
+MusicQueue::batch_move(const std::vector<unsigned int> &from_indices,
+                       unsigned int to_index) {
+  int size = queue.size();
+  int indices_size = from_indices.size();
+
+  if (to_index >= size) {
+    return QueueRetCode::MoveRes::InvalidIndex;
+  }
+
+  std::vector<unsigned int> sorted_indices = from_indices;
+  std::sort(sorted_indices.begin(), sorted_indices.end());
+
+  std::vector<Entity::File> items;
+  items.reserve(indices_size);
+
+  for (const auto &i : sorted_indices) {
+    if (i >= size) {
+      return QueueRetCode::MoveRes::InvalidIndex;
+    }
+
+    items.emplace_back(queue[i]);
+  }
+
+  for (auto it = sorted_indices.rbegin(); it != sorted_indices.rend(); it++) {
+    queue.erase(queue.begin() + *it);
+  }
+
+  unsigned int count_bef_elms =
+      std::count_if(sorted_indices.begin(), sorted_indices.end(),
+                    [to_index](unsigned int i) { return i < to_index; });
+
+  unsigned int moved_idx = to_index - count_bef_elms;
+
+  queue.insert(queue.begin() + moved_idx, items.begin(), items.end());
+
+  return QueueRetCode::MoveRes::Success;
+}
+
+void MusicQueue::print() {
+  std::cout << "Music Queue: " << '\n';
+  for (const auto &f : queue) {
+    std::cout << f.title << '\n';
+  }
+  std::cout << '\n';
+}
+
+const std::vector<Entity::File> &MusicQueue::get_queue() { return queue; }

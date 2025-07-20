@@ -20,6 +20,14 @@ enum class SetArtistAlbumsRes { Success = 0, SqlError };
 
 }; // namespace LibRetCode
 
+namespace QueueRetCode {
+
+enum class EnqueueRes { Success = 0, GetFileError, FileNotFound };
+enum class DequeueRes { Success = 0, QueueIsEmpty, InvalidIndex };
+enum class MoveRes { Success = 0, InvalidIndex };
+
+}; // namespace QueueRetCode
+
 class Library {
 public:
   Library(DB *db__);
@@ -62,4 +70,33 @@ private:
       int unread_file_count,
       const std::forward_list<Entity::File> &update_needed_files,
       int update_needed_file_count);
+};
+
+class MusicQueue {
+public:
+  MusicQueue(DB *db__, int init_size);
+  ~MusicQueue();
+
+  bool is_initialized();
+
+  QueueRetCode::EnqueueRes enqueue(int file_id);
+  QueueRetCode::EnqueueRes batch_enqueue(const std::vector<int> &file_ids);
+
+  QueueRetCode::DequeueRes dequeue();
+  QueueRetCode::DequeueRes dequeue(unsigned int index);
+  QueueRetCode::DequeueRes
+  batch_dequeue(const std::vector<unsigned int> &indices);
+
+  QueueRetCode::MoveRes move(unsigned int from_index, unsigned int to_index);
+  QueueRetCode::MoveRes
+  batch_move(const std::vector<unsigned int> &from_indices,
+             unsigned int to_index);
+
+  void print();
+
+  const std::vector<Entity::File> &get_queue();
+
+private:
+  DB *db = nullptr;
+  std::vector<Entity::File> queue;
 };
