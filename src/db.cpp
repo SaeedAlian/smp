@@ -750,7 +750,6 @@ DBRetCode::GetFileRes DB::get_batch_files(const std::vector<int> &ids,
 
   const std::string q =
       fmt::format("SELECT * FROM files WHERE id IN ({});", qparams);
-  std::cout << q << '\n';
   sqlite3_stmt *stmt = nullptr;
   if (sqlite3_prepare_v2(db, q.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
     PRINT_SQLITE_ERR(db);
