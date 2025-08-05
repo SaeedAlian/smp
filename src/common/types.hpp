@@ -144,6 +144,20 @@ struct Artist {
 
 }; // namespace Entity
 
+namespace Audio {
+
+struct FormatInfo {
+  int frame_size;
+  unsigned int rate;
+  int channels;
+  int encoding;
+  int bits;
+  int is_signed;
+  int is_bigendian;
+};
+
+}; // namespace Audio
+
 inline std::ostream &operator<<(std::ostream &os, const Entity::File &f) {
   os << "ID: " << f.id << '\n';
   os << "Dir ID: " << f.dir_id << '\n';
