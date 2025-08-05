@@ -206,6 +206,33 @@ src/db.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer_test.dir/build.make CMakeFiles/musicplayer_test.dir/src/db.cpp.s
 .PHONY : src/db.cpp.s
 
+src/decoders/mpg123.o: src/decoders/mpg123.cpp.o
+.PHONY : src/decoders/mpg123.o
+
+# target to build an object file
+src/decoders/mpg123.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer.dir/build.make CMakeFiles/musicplayer.dir/src/decoders/mpg123.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer_test.dir/build.make CMakeFiles/musicplayer_test.dir/src/decoders/mpg123.cpp.o
+.PHONY : src/decoders/mpg123.cpp.o
+
+src/decoders/mpg123.i: src/decoders/mpg123.cpp.i
+.PHONY : src/decoders/mpg123.i
+
+# target to preprocess a source file
+src/decoders/mpg123.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer.dir/build.make CMakeFiles/musicplayer.dir/src/decoders/mpg123.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer_test.dir/build.make CMakeFiles/musicplayer_test.dir/src/decoders/mpg123.cpp.i
+.PHONY : src/decoders/mpg123.cpp.i
+
+src/decoders/mpg123.s: src/decoders/mpg123.cpp.s
+.PHONY : src/decoders/mpg123.s
+
+# target to generate assembly for a file
+src/decoders/mpg123.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer.dir/build.make CMakeFiles/musicplayer.dir/src/decoders/mpg123.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer_test.dir/build.make CMakeFiles/musicplayer_test.dir/src/decoders/mpg123.cpp.s
+.PHONY : src/decoders/mpg123.cpp.s
+
 src/library.o: src/library.cpp.o
 .PHONY : src/library.o
 
@@ -257,6 +284,60 @@ src/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer.dir/build.make CMakeFiles/musicplayer.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
+src/outputs/alsa.o: src/outputs/alsa.cpp.o
+.PHONY : src/outputs/alsa.o
+
+# target to build an object file
+src/outputs/alsa.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer.dir/build.make CMakeFiles/musicplayer.dir/src/outputs/alsa.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer_test.dir/build.make CMakeFiles/musicplayer_test.dir/src/outputs/alsa.cpp.o
+.PHONY : src/outputs/alsa.cpp.o
+
+src/outputs/alsa.i: src/outputs/alsa.cpp.i
+.PHONY : src/outputs/alsa.i
+
+# target to preprocess a source file
+src/outputs/alsa.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer.dir/build.make CMakeFiles/musicplayer.dir/src/outputs/alsa.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer_test.dir/build.make CMakeFiles/musicplayer_test.dir/src/outputs/alsa.cpp.i
+.PHONY : src/outputs/alsa.cpp.i
+
+src/outputs/alsa.s: src/outputs/alsa.cpp.s
+.PHONY : src/outputs/alsa.s
+
+# target to generate assembly for a file
+src/outputs/alsa.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer.dir/build.make CMakeFiles/musicplayer.dir/src/outputs/alsa.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer_test.dir/build.make CMakeFiles/musicplayer_test.dir/src/outputs/alsa.cpp.s
+.PHONY : src/outputs/alsa.cpp.s
+
+src/player.o: src/player.cpp.o
+.PHONY : src/player.o
+
+# target to build an object file
+src/player.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer.dir/build.make CMakeFiles/musicplayer.dir/src/player.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer_test.dir/build.make CMakeFiles/musicplayer_test.dir/src/player.cpp.o
+.PHONY : src/player.cpp.o
+
+src/player.i: src/player.cpp.i
+.PHONY : src/player.i
+
+# target to preprocess a source file
+src/player.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer.dir/build.make CMakeFiles/musicplayer.dir/src/player.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer_test.dir/build.make CMakeFiles/musicplayer_test.dir/src/player.cpp.i
+.PHONY : src/player.cpp.i
+
+src/player.s: src/player.cpp.s
+.PHONY : src/player.s
+
+# target to generate assembly for a file
+src/player.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer.dir/build.make CMakeFiles/musicplayer.dir/src/player.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/musicplayer_test.dir/build.make CMakeFiles/musicplayer_test.dir/src/player.cpp.s
+.PHONY : src/player.cpp.s
+
 test/library_test.o: test/library_test.cpp.o
 .PHONY : test/library_test.o
 
@@ -298,12 +379,21 @@ help:
 	@echo "... src/db.o"
 	@echo "... src/db.i"
 	@echo "... src/db.s"
+	@echo "... src/decoders/mpg123.o"
+	@echo "... src/decoders/mpg123.i"
+	@echo "... src/decoders/mpg123.s"
 	@echo "... src/library.o"
 	@echo "... src/library.i"
 	@echo "... src/library.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/outputs/alsa.o"
+	@echo "... src/outputs/alsa.i"
+	@echo "... src/outputs/alsa.s"
+	@echo "... src/player.o"
+	@echo "... src/player.i"
+	@echo "... src/player.s"
 	@echo "... test/library_test.o"
 	@echo "... test/library_test.i"
 	@echo "... test/library_test.s"

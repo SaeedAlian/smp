@@ -14,6 +14,9 @@ set(SRC_FILES
     src/main.cpp
     src/db.cpp
     src/library.cpp
+    src/player.cpp
+    src/decoders/mpg123.cpp
+    src/outputs/alsa.cpp
     src/common/utils.cpp
 )
 
@@ -21,7 +24,7 @@ set(SRC_FILES
 add_executable(musicplayer ${SRC_FILES})
 
 # Link libraries
-target_link_libraries(musicplayer PRIVATE ncurses fmt sqlite3 tag)
+target_link_libraries(musicplayer PRIVATE ncurses fmt sqlite3 tag asound mpg123)
 
 # -----------------------------------
 # Unit Tests
@@ -33,11 +36,14 @@ set(TEST_FILES
     test/library_test.cpp
     src/db.cpp
     src/library.cpp
+    src/player.cpp
+    src/decoders/mpg123.cpp
+    src/outputs/alsa.cpp
     src/common/utils.cpp
 )
 
 add_executable(musicplayer_test ${TEST_FILES})
 target_include_directories(musicplayer_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_link_libraries(musicplayer_test PRIVATE gtest gtest_main pthread fmt sqlite3 tag)
+target_link_libraries(musicplayer_test PRIVATE gtest gtest_main pthread fmt sqlite3 tag asound mpg123)
 
 add_test(NAME LibraryTest COMMAND musicplayer_test)
