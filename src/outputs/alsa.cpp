@@ -1,10 +1,6 @@
 #include "../output.hpp"
 
-AlsaOutput::AlsaOutput() {}
-
-AlsaOutput::~AlsaOutput() {}
-
-OutputRetCode::InitRes AlsaOutput::init() {
+OutputRetCode::InitRes AlsaOutput::init(const char *device) {
   int rc;
 
   rc = snd_pcm_status_malloc(&status);
@@ -12,11 +8,16 @@ OutputRetCode::InitRes AlsaOutput::init() {
     return OutputRetCode::InitRes::Error;
   }
 
+  dev = strdup(device);
+
   return OutputRetCode::InitRes::Success;
 }
 
 OutputRetCode::ExitRes AlsaOutput::exit() {
-  snd_pcm_status_free(status);
+  if (status) {
+    snd_pcm_status_free(status);
+    status = nullptr;
+  }
   return OutputRetCode::ExitRes::Success;
 }
 
@@ -24,7 +25,16 @@ OutputRetCode::OpenRes AlsaOutput::open(const Audio::FormatInfo &afi) {
   int rc;
   fsize = afi.frame_size;
 
-  rc = snd_pcm_open(&handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
+  if (dev == nullptr) {
+    rc = snd_pcm_open(&handle, "sysdefault", SND_PCM_STREAM_PLAYBACK, 0);
+  } else {
+    rc = snd_pcm_open(&handle, dev, SND_PCM_STREAM_PLAYBACK, 0);
+
+    if (rc < 0) {
+      rc = snd_pcm_open(&handle, "sysdefault", SND_PCM_STREAM_PLAYBACK, 0);
+    }
+  }
+
   if (rc < 0) {
     return OutputRetCode::OpenRes::OpenError;
   }
@@ -45,6 +55,9 @@ OutputRetCode::OpenRes AlsaOutput::open(const Audio::FormatInfo &afi) {
 }
 
 OutputRetCode::CloseRes AlsaOutput::close() {
+  if (!handle)
+    return OutputRetCode::CloseRes::Success;
+
   int rc;
 
   rc = snd_pcm_drain(handle);
@@ -57,19 +70,28 @@ OutputRetCode::CloseRes AlsaOutput::close() {
     return OutputRetCode::CloseRes::CloseError;
   }
 
+  handle = nullptr;
   return OutputRetCode::CloseRes::Success;
 }
 
 OutputRetCode::WriteRes AlsaOutput::write(const char *buf, int count) {
-  int rc, len;
+  if (!handle)
+    return OutputRetCode::WriteRes::Error;
+
+  int rc, frames;
   int recovered = 0;
 
-  len = count / fsize;
+  frames = count / fsize;
 
-  rc = snd_pcm_writei(handle, buf, len);
-
+  rc = snd_pcm_writei(handle, buf, frames);
   if (rc < 0) {
-    return OutputRetCode::WriteRes::Error;
+    rc = snd_pcm_recover(handle, rc, 1);
+    if (rc < 0 && ((rc != -EINTR && rc != -EPIPE && rc != -ESTRPIPE)))
+      return OutputRetCode::WriteRes::Error;
+
+    rc = snd_pcm_writei(handle, buf, frames);
+    if (rc < 0)
+      return OutputRetCode::WriteRes::Error;
   }
 
   return OutputRetCode::WriteRes::Success;
@@ -85,13 +107,99 @@ OutputRetCode::UnlockRes AlsaOutput::unlock() {
   return OutputRetCode::UnlockRes::Success;
 }
 
+OutputRetCode::StopRes AlsaOutput::stop() {
+  if (!handle)
+    return OutputRetCode::StopRes::Error;
+
+  int rc;
+  rc = snd_pcm_drop(handle);
+  if (rc < 0) {
+    return OutputRetCode::StopRes::Error;
+  }
+
+  rc = snd_pcm_prepare(handle);
+  if (rc < 0) {
+    return OutputRetCode::StopRes::Error;
+  }
+
+  return OutputRetCode::StopRes::Success;
+}
+
 OutputRetCode::PauseRes AlsaOutput::pause() {
+  int rc;
+
+  if (can_pause) {
+    snd_pcm_state_t state = snd_pcm_state(handle);
+    switch (state) {
+    case SND_PCM_STATE_PREPARED: {
+      return OutputRetCode::PauseRes::Success;
+    }
+
+    case SND_PCM_STATE_RUNNING: {
+      rc = snd_pcm_wait(handle, -1);
+      if (rc < 0) {
+        return OutputRetCode::PauseRes::Error;
+      }
+
+      rc = snd_pcm_pause(handle, 1);
+      if (rc < 0) {
+        return OutputRetCode::PauseRes::Error;
+      }
+    }
+
+    default: {
+      return OutputRetCode::PauseRes::InvalidState;
+    }
+    }
+  } else {
+    rc = snd_pcm_drop(handle);
+    if (rc < 0) {
+      return OutputRetCode::PauseRes::Error;
+    }
+    return OutputRetCode::PauseRes::Dropped;
+  }
+
   return OutputRetCode::PauseRes::Success;
 }
 
 OutputRetCode::UnpauseRes AlsaOutput::unpause() {
+  int rc;
+
+  if (can_pause) {
+    snd_pcm_state_t state = snd_pcm_state(handle);
+    switch (state) {
+    case SND_PCM_STATE_PREPARED: {
+      return OutputRetCode::UnpauseRes::Success;
+    }
+
+    case SND_PCM_STATE_RUNNING: {
+      rc = snd_pcm_wait(handle, -1);
+      if (rc < 0) {
+        return OutputRetCode::UnpauseRes::Error;
+      }
+
+      rc = snd_pcm_pause(handle, 0);
+      if (rc < 0) {
+        return OutputRetCode::UnpauseRes::Error;
+      }
+    }
+
+    default: {
+      return OutputRetCode::UnpauseRes::InvalidState;
+    }
+    }
+  } else {
+    rc = snd_pcm_prepare(handle);
+    if (rc < 0) {
+      return OutputRetCode::UnpauseRes::Error;
+    }
+    return OutputRetCode::UnpauseRes::Prepared;
+  }
+
   return OutputRetCode::UnpauseRes::Success;
 }
+
+void AlsaOutput::change_device(const char *device) { dev = strdup(device); }
 
 int AlsaOutput::set_hw_params(const Audio::FormatInfo &afi) {
   unsigned int max_buf_time = 300 * 1000; // 300ms

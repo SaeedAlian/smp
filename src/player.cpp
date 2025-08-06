@@ -16,6 +16,8 @@ Player::Player() {
 
   output = o;
   decoder = d;
+
+  o->init("pulse");
 }
 
 Player::~Player() {
