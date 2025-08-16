@@ -151,6 +151,7 @@ struct FormatInfo {
   unsigned int rate;
   int channels;
   int encoding;
+  int bitrate;
   int bits;
   int is_signed;
   int is_bigendian;

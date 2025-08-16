@@ -88,6 +88,14 @@ DecoderRetCode::GetFmtRes MPG123Decoder::get_format(Audio::FormatInfo &afi) {
   afi.channels = channels;
   afi.encoding = encoding;
 
+  mpg123_frameinfo info;
+  rc = mpg123_info2(handle, &info);
+
+  if (rc != MPG123_OK) {
+    return DecoderRetCode::GetFmtRes::Error;
+  }
+
+  afi.bitrate = info.bitrate;
   afi.bits = mpg123_encsize(encoding) * 8;
   afi.is_signed = (encoding & MPG123_ENC_SIGNED) ? 1 : 0;
   afi.is_bigendian = (encoding & MPG123_BIG_ENDIAN) ? 1 : 0;
