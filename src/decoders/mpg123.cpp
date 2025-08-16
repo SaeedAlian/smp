@@ -28,7 +28,7 @@ MPG123Decoder::~MPG123Decoder() {
   }
 }
 
-bool MPG123Decoder::is_initialized() { return handle == nullptr; }
+bool MPG123Decoder::is_initialized() { return handle != nullptr; }
 
 DecoderRetCode::OpenRes
 MPG123Decoder::open(const std::filesystem::path filepath) {
