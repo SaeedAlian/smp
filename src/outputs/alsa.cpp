@@ -172,7 +172,7 @@ OutputRetCode::UnpauseRes AlsaOutput::unpause() {
       return OutputRetCode::UnpauseRes::Success;
     }
 
-    case SND_PCM_STATE_RUNNING: {
+    case SND_PCM_STATE_PAUSED: {
       rc = snd_pcm_wait(handle, -1);
       if (rc < 0) {
         return OutputRetCode::UnpauseRes::Error;
