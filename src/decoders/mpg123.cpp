@@ -28,10 +28,10 @@ MPG123Decoder::~MPG123Decoder() {
   }
 }
 
-bool MPG123Decoder::is_initialized() { return handle != nullptr; }
+bool MPG123Decoder::is_initialized() const { return handle != nullptr; }
 
 DecoderRetCode::OpenRes
-MPG123Decoder::open(const std::filesystem::path filepath) {
+MPG123Decoder::open(const std::filesystem::path &filepath) {
   if (handle == nullptr) {
     return DecoderRetCode::OpenRes::EmptyHandle;
   }
@@ -123,4 +123,44 @@ MPG123Decoder::set_format(const Audio::FormatInfo &afi) {
   }
 
   return DecoderRetCode::SetFmtRes::Success;
+}
+
+DecoderRetCode::SeekRes MPG123Decoder::seek_set(double offset) {
+  return seek(offset, SEEK_SET);
+}
+
+DecoderRetCode::SeekRes MPG123Decoder::seek_cur(double offset) {
+  return seek(offset, SEEK_CUR);
+}
+
+DecoderRetCode::SeekRes MPG123Decoder::seek_end(double offset) {
+  return seek(offset, SEEK_END);
+}
+
+DecoderRetCode::SeekRes MPG123Decoder::seek(double offset, int whence) {
+  if (handle == nullptr) {
+    return DecoderRetCode::SeekRes::EmptyHandle;
+  }
+
+  int rc;
+
+  rc = mpg123_seek(handle, offset, whence);
+
+  if (rc != MPG123_OK) {
+    return DecoderRetCode::SeekRes::Error;
+  }
+
+  return DecoderRetCode::SeekRes::Success;
+}
+
+int64_t MPG123Decoder::tell() {
+  if (handle == nullptr) {
+    return -1;
+  }
+
+  return mpg123_tell(handle);
+}
+
+Enum::DecoderType MPG123Decoder::get_decoder_type() const {
+  return Enum::DecoderType::MPG123;
 }

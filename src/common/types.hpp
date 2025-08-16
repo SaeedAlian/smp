@@ -12,7 +12,22 @@ enum class FileType {
   UNKNOWN,
 };
 
+enum class OutputType {
+  ALSA = 0,
 };
+
+enum class DecoderType {
+  MPG123 = 0,
+  UNKNOWN,
+};
+
+enum class OutputDeviceType {
+  DEFAULT = 0,
+  PULSE,
+  UNKNOWN,
+};
+
+}; // namespace Enum
 
 namespace Entity {
 
@@ -178,4 +193,25 @@ inline std::ostream &operator<<(std::ostream &os, const Entity::File &f) {
   os << "Size: " << f.filesize << '\n';
   os << "FileType: " << (int)f.filetype << '\n';
   return os;
+}
+
+inline std::string output_device_str(Enum::OutputDeviceType type) {
+  switch (type) {
+  case Enum::OutputDeviceType::DEFAULT:
+    return "default";
+  case Enum::OutputDeviceType::PULSE:
+    return "pulse";
+  default:
+    return "default";
+  }
+}
+
+inline Enum::OutputDeviceType output_device_enum(std::string type) {
+  if (type == "default") {
+    return Enum::OutputDeviceType::DEFAULT;
+  } else if (type == "pulse") {
+    return Enum::OutputDeviceType::PULSE;
+  } else {
+    return Enum::OutputDeviceType::UNKNOWN;
+  }
 }

@@ -2,16 +2,114 @@
 #include "common/types.hpp"
 #include "decoder.hpp"
 #include "output.hpp"
+#include <array>
+#include <atomic>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
+#include <utility>
+
+namespace PlayerRetCode {
+
+enum class InitRes {
+  Success = 0,
+  Error,
+};
+
+enum class ExitRes {
+  Success = 0,
+  Error,
+};
+
+enum class LoadRes {
+  Success = 0,
+  FailedToInitDecoder,
+  DecoderNotFound,
+  Error,
+};
+
+enum class PlayRes {
+  Success = 0,
+  PlaybackIsAlreadyRunning,
+  Error,
+};
+
+enum class PauseRes {
+  Success = 0,
+  PlaybackIsNotRunning,
+  Error,
+};
+
+enum class ResumeRes {
+  Success = 0,
+  PlaybackIsNotRunning,
+  PlaybackIsAlreadyPaused,
+  Error,
+};
+
+enum class StopRes {
+  Success = 0,
+  PlaybackIsNotRunning,
+  Error,
+};
+
+enum class SeekRes {
+  Success = 0,
+  PlaybackIsNotRunning,
+  Error,
+};
+
+}; // namespace PlayerRetCode
+
+struct PlayerConfig {
+  Enum::OutputType output_type;
+  Enum::OutputDeviceType device_type;
+};
+
+constexpr std::array<std::pair<Enum::FileType, Enum::DecoderType>, 1>
+    decoder_filetype_map = {{{Enum::FileType::MP3, Enum::DecoderType::MPG123}}};
+
+constexpr Enum::DecoderType get_decoder_with_filetype(Enum::FileType type) {
+  for (auto &[k, v] : decoder_filetype_map) {
+    if (k == type)
+      return v;
+  }
+
+  return Enum::DecoderType::UNKNOWN;
+}
 
 class Player {
 public:
-  Player();
-  ~Player();
+  Player(const PlayerConfig &config);
 
-  int load(const Entity::File &file);
-  int play();
+  PlayerRetCode::InitRes init();
+  void exit();
+
+  PlayerRetCode::LoadRes load(const Entity::File &file);
+  PlayerRetCode::PlayRes play();
+  PlayerRetCode::StopRes stop();
+
+  PlayerRetCode::PauseRes pause();
+  PlayerRetCode::ResumeRes resume();
+
+  PlayerRetCode::SeekRes seek(double offset);
+
+  const bool is_playing();
+  const bool is_paused();
 
 private:
-  AlsaOutput *output = nullptr;
-  MPG123Decoder *decoder = nullptr;
+  PlayerConfig config;
+
+  std::unique_ptr<Output> output = nullptr;
+  std::unique_ptr<Decoder> decoder = nullptr;
+
+  std::thread thrd;
+  std::condition_variable cv;
+  std::mutex state_mtx;
+
+  std::atomic<bool> playback_active = false;
+  std::atomic<bool> pause_action = false;
+  std::atomic<bool> stop_action = false;
+
+  void playback_loop();
 };

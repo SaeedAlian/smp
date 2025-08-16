@@ -60,24 +60,50 @@ enum class UnpauseRes {
 
 } // namespace OutputRetCode
 
-class AlsaOutput {
+class Output {
 public:
-  OutputRetCode::InitRes init(const char *device);
-  OutputRetCode::ExitRes exit();
+  virtual OutputRetCode::InitRes init(const char *device) = 0;
+  virtual OutputRetCode::ExitRes exit() = 0;
 
-  OutputRetCode::OpenRes open(const Audio::FormatInfo &afi);
-  OutputRetCode::CloseRes close();
+  virtual OutputRetCode::OpenRes open(const Audio::FormatInfo &afi) = 0;
+  virtual OutputRetCode::CloseRes close() = 0;
 
-  OutputRetCode::UnlockRes unlock();
-  OutputRetCode::LockRes lock();
+  virtual OutputRetCode::UnlockRes unlock() = 0;
+  virtual OutputRetCode::LockRes lock() = 0;
 
-  OutputRetCode::WriteRes write(const char *buf, int count);
+  virtual OutputRetCode::WriteRes write(const char *buf, int count) = 0;
 
-  OutputRetCode::StopRes stop();
-  OutputRetCode::PauseRes pause();
-  OutputRetCode::UnpauseRes unpause();
+  virtual OutputRetCode::StopRes stop() = 0;
+  virtual OutputRetCode::PauseRes pause() = 0;
+  virtual OutputRetCode::UnpauseRes unpause() = 0;
 
-  void change_device(const char *device);
+  virtual void change_device(const char *device) = 0;
+
+  virtual Enum::OutputType get_output_type() const = 0;
+  virtual Enum::OutputDeviceType get_output_device_type() const = 0;
+};
+
+class AlsaOutput : public Output {
+public:
+  OutputRetCode::InitRes init(const char *device) override;
+  OutputRetCode::ExitRes exit() override;
+
+  OutputRetCode::OpenRes open(const Audio::FormatInfo &afi) override;
+  OutputRetCode::CloseRes close() override;
+
+  OutputRetCode::UnlockRes unlock() override;
+  OutputRetCode::LockRes lock() override;
+
+  OutputRetCode::WriteRes write(const char *buf, int count) override;
+
+  OutputRetCode::StopRes stop() override;
+  OutputRetCode::PauseRes pause() override;
+  OutputRetCode::UnpauseRes unpause() override;
+
+  void change_device(const char *device) override;
+
+  Enum::OutputType get_output_type() const override;
+  Enum::OutputDeviceType get_output_device_type() const override;
 
 private:
   const char *dev = nullptr;
@@ -90,4 +116,15 @@ private:
   snd_pcm_format_t fmt = SND_PCM_FORMAT_UNKNOWN;
 
   int set_hw_params(const Audio::FormatInfo &afi);
+};
+
+class OutputFactory {
+public:
+  static std::unique_ptr<Output> create(const Enum::OutputType type) {
+    if (type == Enum::OutputType::ALSA) {
+      return std::make_unique<AlsaOutput>();
+    } else {
+      return nullptr;
+    }
+  }
 };

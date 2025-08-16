@@ -247,3 +247,11 @@ error:
   snd_pcm_hw_params_free(params);
   return rc;
 }
+
+Enum::OutputType AlsaOutput::get_output_type() const {
+  return Enum::OutputType::ALSA;
+}
+
+Enum::OutputDeviceType AlsaOutput::get_output_device_type() const {
+  return output_device_enum(dev);
+}
