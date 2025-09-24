@@ -7,7 +7,9 @@
 
 Player::Player(const PlayerConfig &config)
     : config(config), thrd(), playback_active(false), pause_action(false),
-      stop_action(false) {}
+      stop_action(false), last_toggle_pause(std::chrono::steady_clock::now() -
+                                            std::chrono::milliseconds(1000)),
+      toggle_pause_cooldown(std::chrono::milliseconds(200)) {}
 
 PlayerRetCode::InitRes Player::init() {
   playback_active = false;
@@ -115,8 +117,20 @@ PlayerRetCode::PauseRes Player::pause() {
   if (!playback_active) {
     return PlayerRetCode::PauseRes::PlaybackIsNotRunning;
   }
+  if (pause_action) {
+    return PlayerRetCode::PauseRes::PlaybackIsAlreadyPaused;
+  }
+
+  auto now = std::chrono::steady_clock::now();
+
+  if (now - last_toggle_pause < toggle_pause_cooldown) {
+    return PlayerRetCode::PauseRes::CooldownError;
+  }
+  last_toggle_pause = now;
+
   pause_action = true;
   output->pause();
+
   return PlayerRetCode::PauseRes::Success;
 }
 
@@ -126,10 +140,17 @@ PlayerRetCode::ResumeRes Player::resume() {
   if (!playback_active) {
     return PlayerRetCode::ResumeRes::PlaybackIsNotRunning;
   }
-
   if (!pause_action) {
-    return PlayerRetCode::ResumeRes::PlaybackIsNotRunning;
+    return PlayerRetCode::ResumeRes::PlaybackIsNotPaused;
   }
+
+  auto now = std::chrono::steady_clock::now();
+
+  if (now - last_toggle_pause < toggle_pause_cooldown) {
+    return PlayerRetCode::ResumeRes::CooldownError;
+  }
+  last_toggle_pause = now;
+
   pause_action = false;
   output->unpause();
   cv.notify_one();

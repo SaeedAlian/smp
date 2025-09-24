@@ -4,6 +4,7 @@
 #include "output.hpp"
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
@@ -36,14 +37,17 @@ enum class PlayRes {
 
 enum class PauseRes {
   Success = 0,
+  CooldownError,
+  PlaybackIsAlreadyPaused,
   PlaybackIsNotRunning,
   Error,
 };
 
 enum class ResumeRes {
   Success = 0,
+  CooldownError,
   PlaybackIsNotRunning,
-  PlaybackIsAlreadyPaused,
+  PlaybackIsNotPaused,
   Error,
 };
 
@@ -110,6 +114,9 @@ private:
   std::atomic<bool> playback_active = false;
   std::atomic<bool> pause_action = false;
   std::atomic<bool> stop_action = false;
+
+  std::chrono::steady_clock::time_point last_toggle_pause;
+  const std::chrono::milliseconds toggle_pause_cooldown;
 
   void playback_loop();
 };
