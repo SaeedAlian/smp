@@ -1,5 +1,18 @@
 #include "../output.hpp"
 
+static int poll_pcm(snd_pcm_t *handle, int timeout_ms) {
+  int count = snd_pcm_poll_descriptors_count(handle);
+  if (count <= 0)
+    return -1;
+
+  std::vector<pollfd> pfds(count);
+  if (snd_pcm_poll_descriptors(handle, pfds.data(), count) < 0)
+    return -1;
+
+  int rc = poll(pfds.data(), count, timeout_ms);
+  return rc;
+}
+
 OutputRetCode::InitRes AlsaOutput::init(const char *device) {
   int rc;
 
@@ -126,30 +139,57 @@ OutputRetCode::StopRes AlsaOutput::stop() {
 }
 
 OutputRetCode::PauseRes AlsaOutput::pause() {
+  if (!handle)
+    return OutputRetCode::PauseRes::Error;
+
   int rc;
 
   if (can_pause) {
     snd_pcm_state_t state = snd_pcm_state(handle);
+
     switch (state) {
-    case SND_PCM_STATE_PREPARED: {
+    case SND_PCM_STATE_PREPARED:
       return OutputRetCode::PauseRes::Success;
-    }
 
     case SND_PCM_STATE_RUNNING: {
-      rc = snd_pcm_wait(handle, -1);
+      rc = poll_pcm(handle, 200);
       if (rc < 0) {
-        return OutputRetCode::PauseRes::Error;
+        int rec = snd_pcm_recover(handle, rc, 1);
+        if (rec < 0)
+          return OutputRetCode::PauseRes::Error;
       }
 
       rc = snd_pcm_pause(handle, 1);
       if (rc < 0) {
-        return OutputRetCode::PauseRes::Error;
+        if (rc == -ENOSYS) {
+          return OutputRetCode::PauseRes::InvalidState;
+        }
+        int rec = snd_pcm_recover(handle, rc, 1);
+        if (rec < 0)
+          return OutputRetCode::PauseRes::Error;
       }
+
+      return OutputRetCode::PauseRes::Success;
     }
 
-    default: {
-      return OutputRetCode::PauseRes::InvalidState;
+    case SND_PCM_STATE_SUSPENDED: {
+      rc = snd_pcm_resume(handle);
+      if (rc < 0) {
+        rc = snd_pcm_prepare(handle);
+        if (rc < 0)
+          return OutputRetCode::PauseRes::Error;
+      }
+      rc = snd_pcm_pause(handle, 1);
+      if (rc < 0) {
+        int rec = snd_pcm_recover(handle, rc, 1);
+        if (rec < 0)
+          return OutputRetCode::PauseRes::Error;
+      }
+      return OutputRetCode::PauseRes::Success;
     }
+
+    default:
+      return OutputRetCode::PauseRes::InvalidState;
     }
   } else {
     rc = snd_pcm_drop(handle);
@@ -163,36 +203,61 @@ OutputRetCode::PauseRes AlsaOutput::pause() {
 }
 
 OutputRetCode::UnpauseRes AlsaOutput::unpause() {
+  if (!handle)
+    return OutputRetCode::UnpauseRes::Error;
+
   int rc;
 
   if (can_pause) {
     snd_pcm_state_t state = snd_pcm_state(handle);
+
     switch (state) {
-    case SND_PCM_STATE_PREPARED: {
+    case SND_PCM_STATE_PREPARED:
       return OutputRetCode::UnpauseRes::Success;
-    }
 
     case SND_PCM_STATE_PAUSED: {
-      rc = snd_pcm_wait(handle, -1);
+      rc = poll_pcm(handle, 200);
       if (rc < 0) {
-        return OutputRetCode::UnpauseRes::Error;
+        int rec = snd_pcm_recover(handle, rc, 1);
+        if (rec < 0)
+          return OutputRetCode::UnpauseRes::Error;
       }
 
       rc = snd_pcm_pause(handle, 0);
       if (rc < 0) {
-        return OutputRetCode::UnpauseRes::Error;
+        if (rc == -ENOSYS) {
+          rc = snd_pcm_prepare(handle);
+          if (rc < 0)
+            return OutputRetCode::UnpauseRes::Error;
+          return OutputRetCode::UnpauseRes::Prepared;
+        }
+
+        int rec = snd_pcm_recover(handle, rc, 1);
+        if (rec < 0)
+          return OutputRetCode::UnpauseRes::Error;
       }
+
+      return OutputRetCode::UnpauseRes::Success;
     }
 
-    default: {
-      return OutputRetCode::UnpauseRes::InvalidState;
+    case SND_PCM_STATE_SUSPENDED: {
+      rc = snd_pcm_resume(handle);
+      if (rc < 0) {
+        rc = snd_pcm_prepare(handle);
+        if (rc < 0)
+          return OutputRetCode::UnpauseRes::Error;
+        return OutputRetCode::UnpauseRes::Prepared;
+      }
+      return OutputRetCode::UnpauseRes::Success;
     }
+
+    default:
+      return OutputRetCode::UnpauseRes::InvalidState;
     }
   } else {
     rc = snd_pcm_prepare(handle);
-    if (rc < 0) {
+    if (rc < 0)
       return OutputRetCode::UnpauseRes::Error;
-    }
     return OutputRetCode::UnpauseRes::Prepared;
   }
 
