@@ -17,11 +17,6 @@ enum class InitRes {
   Error,
 };
 
-enum class ExitRes {
-  Success = 0,
-  Error,
-};
-
 enum class LoadRes {
   Success = 0,
   FailedToInitDecoder,
