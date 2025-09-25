@@ -31,6 +31,7 @@ enum class LoadRes {
 
 enum class PlayRes {
   Success = 0,
+  FileNotLoaded,
   PlaybackIsAlreadyRunning,
   Error,
 };
@@ -60,6 +61,7 @@ enum class StopRes {
 enum class SeekRes {
   Success = 0,
   PlaybackIsNotRunning,
+  FileNotLoaded,
   Error,
 };
 
@@ -103,6 +105,8 @@ public:
 
 private:
   PlayerConfig config;
+
+  const Entity::File *current_file = nullptr;
 
   std::unique_ptr<Output> output = nullptr;
   std::unique_ptr<Decoder> decoder = nullptr;

@@ -89,6 +89,8 @@ PlayerRetCode::LoadRes Player::load(const Entity::File &file) {
   if (output->open(afi) != OutputRetCode::OpenRes::Success)
     goto error;
 
+  current_file = &file;
+
   return PlayerRetCode::LoadRes::Success;
 
 error:
@@ -100,6 +102,10 @@ PlayerRetCode::PlayRes Player::play() {
 
   if (playback_active) {
     return PlayerRetCode::PlayRes::PlaybackIsAlreadyRunning;
+  }
+
+  if (current_file == nullptr) {
+    return PlayerRetCode::PlayRes::FileNotLoaded;
   }
 
   playback_active = true;
@@ -185,6 +191,10 @@ PlayerRetCode::SeekRes Player::seek(double offset) {
   std::lock_guard<std::mutex> lock(state_mtx);
   if (!playback_active) {
     return PlayerRetCode::SeekRes::PlaybackIsNotRunning;
+  }
+
+  if (current_file == nullptr) {
+    return PlayerRetCode::SeekRes::FileNotLoaded;
   }
 
   DecoderRetCode::SeekRes res = decoder->seek_cur(offset);
