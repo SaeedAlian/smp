@@ -62,6 +62,7 @@ enum class SeekRes {
   Success = 0,
   PlaybackIsNotRunning,
   FileNotLoaded,
+  OffsetOutOfRange,
   Error,
 };
 
@@ -91,6 +92,8 @@ public:
   PlayerRetCode::InitRes init();
   void exit();
 
+  const uint32_t get_current_tell_sec();
+
   PlayerRetCode::LoadRes load(const Entity::File &file);
   PlayerRetCode::PlayRes play();
   PlayerRetCode::StopRes stop();
@@ -98,7 +101,8 @@ public:
   PlayerRetCode::PauseRes pause();
   PlayerRetCode::ResumeRes resume();
 
-  PlayerRetCode::SeekRes seek(double offset);
+  PlayerRetCode::SeekRes seek(int64_t offset_second);
+  PlayerRetCode::SeekRes seek_to(uint32_t to_second);
 
   const bool is_playing();
   const bool is_paused();

@@ -187,7 +187,7 @@ PlayerRetCode::StopRes Player::stop() {
   return PlayerRetCode::StopRes::Success;
 }
 
-PlayerRetCode::SeekRes Player::seek(double offset) {
+PlayerRetCode::SeekRes Player::seek(int64_t offset_second) {
   std::lock_guard<std::mutex> lock(state_mtx);
   if (!playback_active) {
     return PlayerRetCode::SeekRes::PlaybackIsNotRunning;
@@ -197,12 +197,72 @@ PlayerRetCode::SeekRes Player::seek(double offset) {
     return PlayerRetCode::SeekRes::FileNotLoaded;
   }
 
+  int bitrate = current_file->bitrate;
+  int byte_per_sec = (bitrate * 1000) / 8;
+
+  uint32_t curr_sec = get_current_tell_sec();
+  int64_t final_sec = curr_sec + offset_second;
+
+  if (final_sec < 0 || final_sec > current_file->length) {
+    return PlayerRetCode::SeekRes::OffsetOutOfRange;
+  }
+
+  double offset = byte_per_sec * offset_second;
+
   DecoderRetCode::SeekRes res = decoder->seek_cur(offset);
   if (res != DecoderRetCode::SeekRes::Success) {
     return PlayerRetCode::SeekRes::Error;
   }
 
   return PlayerRetCode::SeekRes::Success;
+}
+
+PlayerRetCode::SeekRes Player::seek_to(uint32_t to_second) {
+  std::lock_guard<std::mutex> lock(state_mtx);
+  if (!playback_active) {
+    return PlayerRetCode::SeekRes::PlaybackIsNotRunning;
+  }
+
+  if (current_file == nullptr) {
+    return PlayerRetCode::SeekRes::FileNotLoaded;
+  }
+
+  if (to_second < 0 || to_second > current_file->length) {
+    return PlayerRetCode::SeekRes::OffsetOutOfRange;
+  }
+
+  int bitrate = current_file->bitrate;
+  int byte_per_sec = (bitrate * 1000) / 8;
+
+  uint32_t curr_sec = get_current_tell_sec();
+  int64_t diff = to_second - curr_sec;
+
+  double offset = byte_per_sec * diff;
+
+  DecoderRetCode::SeekRes res = decoder->seek_cur(offset);
+  if (res != DecoderRetCode::SeekRes::Success) {
+    return PlayerRetCode::SeekRes::Error;
+  }
+
+  return PlayerRetCode::SeekRes::Success;
+}
+
+const uint32_t Player::get_current_tell_sec() {
+  std::lock_guard<std::mutex> lock(state_mtx);
+  if (!playback_active) {
+    return 0;
+  }
+
+  if (current_file == nullptr) {
+    return 0;
+  }
+
+  int bitrate = current_file->bitrate;
+  int byte_per_sec = (bitrate * 1000) / 8;
+
+  int64_t curr_tell = decoder->tell();
+  uint32_t curr_sec = curr_tell / byte_per_sec;
+  return curr_sec;
 }
 
 const bool Player::is_playing() {
